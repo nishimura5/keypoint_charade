@@ -7,6 +7,7 @@ import PIL.Image
 import PIL.ImageTk
 
 import detect_landmarks
+import keypoint_names as kn
 
 
 class App(ttk.Frame):
@@ -15,43 +16,7 @@ class App(ttk.Frame):
         self.master.title("Keypoint Charades")
         self.pack()
         self.body = detect_landmarks.BodyLandmarks()
-        self.num_of_keypoints = 33
-        self.keypoint_labels = [
-            "顔",
-            "左目(内側)",
-            "L目",
-            "左目(外側)",
-            "右目(内側)",
-            "R目",
-            "右目(外側)",
-            "左耳",
-            "右耳",
-            "L口",
-            "R口",
-            "左肩",
-            "右肩",
-            "左肘",
-            "右肘",
-            "左手",
-            "右手",
-            "左小指",
-            "右小指",
-            "左人差し指",
-            "右人差し指",
-            "左親指",
-            "右親指",
-            "左腰",
-            "右腰",
-            "左膝",
-            "右膝",
-            "左足首",
-            "右足首",
-            "左かかと",
-            "右かかと",
-            "左つま先",
-            "右つま先",
-        ]
-        self.view_switches = [False] * self.num_of_keypoints
+        self.view_switches = [False] * kn.num_of_keypoints
         self.show_frame_flg = True
         self.show_bones_flg = True
         self.create_widgets()
@@ -60,7 +25,7 @@ class App(ttk.Frame):
         self.cap = cv2.VideoCapture(0)
         _, frame = self.cap.read()
         frame_ratio = frame.shape[1] / frame.shape[0]
-        self.frame_width = 800
+        self.frame_width = 1200
         self.frame_height = int(self.frame_width / frame_ratio)
         self.canvas = tk.Canvas(self, width=self.frame_width, height=self.frame_height)
         self.canvas.pack(side=tk.LEFT)
@@ -79,55 +44,38 @@ class App(ttk.Frame):
         button_frame.pack(pady=10)
 
         self.checkbtns = []
-        for i in range(self.num_of_keypoints):
-            if self.keypoint_labels[i] in [
-                "鼻",
-                "左耳",
-                "右耳",
-                "L目",
-                "R目",
-                "左目(内側)",
-                "右目(内側)",
-                "左目(外側)",
-                "右目(外側)",
-                "L口",
-                "R口",
-            ]:
+        for i in range(kn.num_of_keypoints):
+            if kn.keypoint_labels[i] in kn.no_checkbox_labels:
                 self.checkbtns.append(None)
                 continue
-            if "指" in self.keypoint_labels[i]:
-                self.checkbtns.append(None)
-                continue
-            if "左" in self.keypoint_labels[i] or "顔" in self.keypoint_labels[i]:
+            if kn.LEFT in kn.keypoint_labels[i] or kn.FACE in kn.keypoint_labels[i]:
                 checkbtn = ttk.Checkbutton(
                     left_frame,
-                    text=self.keypoint_labels[i],
+                    text=kn.keypoint_labels[i],
                     command=lambda: self.checkbtn_callback(),
                     onvalue=True,
                     offvalue=False,
                 )
-            elif "右" in self.keypoint_labels[i]:
+            elif kn.RIGHT in kn.keypoint_labels[i]:
                 checkbtn = ttk.Checkbutton(
                     right_frame,
-                    text=self.keypoint_labels[i],
+                    text=kn.keypoint_labels[i],
                     command=lambda: self.checkbtn_callback(),
                     onvalue=True,
                     offvalue=False,
                 )
             else:
-                raise ValueError(
-                    f"Invalid keypoint label{i}: {self.keypoint_labels[i]}"
-                )
+                raise ValueError(f"Invalid keypoint label{i}: {kn.keypoint_labels[i]}")
             checkbtn.state(["!alternate"])
 
             checkbtn.pack(anchor=tk.W)
             self.checkbtns.append(checkbtn)
 
-        self.show_frame_btn = ttk.Button(button_frame, text="Hide Frame")
+        self.show_frame_btn = ttk.Button(button_frame, text=kn.HIDE_FRAME, width=14)
         self.show_frame_btn.pack()
         self.show_frame_btn["command"] = self.show_frame_btn_callback
 
-        self.show_bones_btn = ttk.Button(button_frame, text="Hide Bones")
+        self.show_bones_btn = ttk.Button(button_frame, text=kn.HIDE_BONE, width=14)
         self.show_bones_btn.pack()
         self.show_bones_btn["command"] = self.show_bones_btn_callback
 
@@ -145,11 +93,7 @@ class App(ttk.Frame):
 
         if detected_data:
             if self.show_bones_flg:
-                self.body.mp_drawing.draw_landmarks(
-                    annotated_frame,
-                    detected_data,
-                    self.body.mp_pose.POSE_CONNECTIONS,
-                )
+                self.body.draw_bone(annotated_frame, detected_data)
             else:
                 self.body.draw(annotated_frame, detected_data, self.view_switches)
         else:
@@ -174,16 +118,16 @@ class App(ttk.Frame):
     def show_frame_btn_callback(self):
         self.show_frame_flg = not self.show_frame_flg
         if self.show_frame_flg:
-            self.show_frame_btn["text"] = "Hide Frame"
+            self.show_frame_btn["text"] = kn.HIDE_FRAME
         else:
-            self.show_frame_btn["text"] = "Show Frame"
+            self.show_frame_btn["text"] = kn.SHOW_FRAME
 
     def show_bones_btn_callback(self):
         self.show_bones_flg = not self.show_bones_flg
         if self.show_bones_flg:
-            self.show_bones_btn["text"] = "Hide Bones"
+            self.show_bones_btn["text"] = kn.HIDE_BONE
         else:
-            self.show_bones_btn["text"] = "Show Bones"
+            self.show_bones_btn["text"] = kn.SHOW_BONE
 
 
 def main():

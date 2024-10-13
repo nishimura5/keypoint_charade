@@ -25,9 +25,9 @@ class App(ttk.Frame):
         self.cap = cv2.VideoCapture(0)
         _, frame = self.cap.read()
         frame_ratio = frame.shape[1] / frame.shape[0]
-        self.frame_width = 1200
-        self.frame_height = int(self.frame_width / frame_ratio)
-        self.canvas = tk.Canvas(self, width=self.frame_width, height=self.frame_height)
+        self.frame_height = 1000
+        self.frame_width = int(self.frame_height * frame_ratio)
+        self.canvas = tk.Canvas(self, width=self.frame_height, height=self.frame_height)
         self.canvas.pack(side=tk.LEFT)
 
         contorl_frame = ttk.Frame(self)
@@ -44,11 +44,21 @@ class App(ttk.Frame):
         button_frame.pack(pady=10)
 
         self.checkbtns = []
+        self.select_all_checkbtn = ttk.Checkbutton(
+            left_frame,
+            text="Select All",
+            command=lambda: self.select_all(),
+            onvalue=True,
+            offvalue=False,
+        )
+        self.select_all_checkbtn.state(["!alternate"])
+        self.select_all_checkbtn.pack(anchor=tk.W)
+
         for i in range(kn.num_of_keypoints):
             if kn.keypoint_labels[i] in kn.no_checkbox_labels:
                 self.checkbtns.append(None)
                 continue
-            if kn.LEFT in kn.keypoint_labels[i] or kn.FACE in kn.keypoint_labels[i]:
+            if kn.LEFT in kn.keypoint_labels[i]:
                 checkbtn = ttk.Checkbutton(
                     left_frame,
                     text=kn.keypoint_labels[i],
@@ -56,7 +66,7 @@ class App(ttk.Frame):
                     onvalue=True,
                     offvalue=False,
                 )
-            elif kn.RIGHT in kn.keypoint_labels[i]:
+            elif kn.RIGHT in kn.keypoint_labels[i] or kn.FACE in kn.keypoint_labels[i]:
                 checkbtn = ttk.Checkbutton(
                     right_frame,
                     text=kn.keypoint_labels[i],
@@ -84,20 +94,22 @@ class App(ttk.Frame):
     def update(self):
         ret, frame = self.cap.read()
         frame = cv2.resize(frame, (self.frame_width, self.frame_height))
-        detected_data = self.body.detect(frame)
+        # crop square (src_width must be larger than src_height)
+        if frame.shape[0] < frame.shape[1]:
+            margin = (frame.shape[1] - frame.shape[0]) // 2
+            frame = frame[:, margin : margin + frame.shape[0]]
+
+        self.body.detect(frame)
 
         if self.show_frame_flg:
             annotated_frame = frame.copy()
         else:
             annotated_frame = np.zeros_like(frame)
 
-        if detected_data:
-            if self.show_bones_flg:
-                self.body.draw_bone(annotated_frame, detected_data)
-            else:
-                self.body.draw(annotated_frame, detected_data, self.view_switches)
+        if self.show_bones_flg:
+            self.body.draw_bone(annotated_frame)
         else:
-            annotated_frame = frame
+            self.body.draw(annotated_frame, self.view_switches)
 
         if ret:
             self.photo = PIL.ImageTk.PhotoImage(
@@ -107,6 +119,17 @@ class App(ttk.Frame):
             )
             self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.after(10, self.update)
+
+    def select_all(self):
+        if self.select_all_checkbtn.instate(["selected"]):
+            for checkbtn in self.checkbtns:
+                if checkbtn is not None:
+                    checkbtn.state(["selected"])
+        else:
+            for checkbtn in self.checkbtns:
+                if checkbtn is not None:
+                    checkbtn.state(["!selected"])
+        self.checkbtn_callback()
 
     def checkbtn_callback(self):
         for i, checkbtn in enumerate(self.checkbtns):
